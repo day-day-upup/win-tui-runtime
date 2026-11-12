@@ -18,6 +18,7 @@ add_library(tui_core STATIC
     src/core/waker.cpp
     src/core/timer_heap.cpp
     src/core/event_loop.cpp
+    src/core/wfmo_backend.cpp
 )
 target_include_directories(tui_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -75,6 +76,11 @@ target_include_directories(test_stage4 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests
 target_link_libraries(test_stage4 PRIVATE tui_io tui_pool tui_console)
 add_test(NAME stage4 COMMAND test_stage4)
 
+add_executable(test_stage5 tests/test_stage5.cpp)
+target_include_directories(test_stage5 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+target_link_libraries(test_stage5 PRIVATE tui_core tui_io)
+add_test(NAME stage5 COMMAND test_stage5)
+
 # ---- demo ----
 add_executable(loop_demo src/app/loop_demo.cpp)
 target_link_libraries(loop_demo PRIVATE tui_core)
@@ -87,3 +93,6 @@ target_link_libraries(iocp_demo PRIVATE tui_io tui_console)
 
 add_executable(aggregate_demo src/app/aggregate_demo.cpp)
 target_link_libraries(aggregate_demo PRIVATE tui_io tui_pool tui_console)
+
+add_executable(backend_compare src/app/backend_compare.cpp)
+target_link_libraries(backend_compare PRIVATE tui_core tui_io)

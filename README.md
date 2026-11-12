@@ -50,10 +50,12 @@ build\test_console.exe           :: 阶段 2：14 个单元测试
 build\loop_demo.exe             :: 阶段 1：headless 事件循环演示（约 3 秒）
 build\test_iocp.exe              :: 阶段 3：13 个单元测试（含真实目录端到端）
 build\test_stage4.exe            :: 阶段 4：7 个单元测试（含真实管道 + TCP 端到端）
+build\test_stage5.exe            :: 阶段 5：11 个单元测试（64 上限 / APC / 后端切换）
 build\key_viewer.exe             :: 阶段 2：按键事件查看器（真实控制台，ESC 退出）
 build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自检
 build\iocp_demo.exe              :: 阶段 3：目录监视 + IOCP + 差分渲染演示（约 1 秒）
 build\aggregate_demo.exe         :: 阶段 4：六子系统聚合控制台（约 1.2 秒）
+build\backend_compare.exe        :: 阶段 5：IOCP vs WFMO 双后端对照实验
 ```
 
 **阶段进度：**
@@ -71,6 +73,10 @@ build\aggregate_demo.exe         :: 阶段 4：六子系统聚合控制台（约
   无状态计算并回投续延、`RingBuffer` 背压）。`IoContext` 支持多 ctx 全双工
   （读/写各一个 OVERLAPPED）。`aggregate_demo` 把六类子系统接进同一个 IOCP
   事件循环；阶段 1/2/3 测试零回归。
+- 阶段 5：双后端对照（`WfmoBackend` 用 `WaitForMultipleObjectsEx` 可警报等待，
+  显式暴露 `MAXIMUM_WAIT_OBJECTS=64` 上限与 APC）。同一套 `EventLoop` 接口
+  可切换 waker / wfmo / iocp 三种后端，同一工作负载结果一致。
+  `backend_compare` 把「为什么 Windows 需要 IOCP」做成可运行实验。
 
 ## 许可
 
