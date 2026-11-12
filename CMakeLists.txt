@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 project(win-tui-runtime LANGUAGES CXX)
 
 # 纯 C++20 + Win32，零第三方依赖（约束 A1/A2）。
@@ -31,6 +31,7 @@ add_library(tui_console STATIC
     src/console/console_input_thread.cpp
     src/console/renderer.cpp
     src/console/key_viewer.cpp
+    src/console/serial_net_assistant.cpp
 )
 target_include_directories(tui_console PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tui_console PUBLIC tui_core)
@@ -43,6 +44,7 @@ add_library(tui_io STATIC
     src/io/dir_watcher.cpp
     src/io/pipe_source.cpp
     src/io/tcp_source.cpp
+    src/io/serial_source.cpp
 )
 target_include_directories(tui_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tui_io PUBLIC tui_core ws2_32)
@@ -81,6 +83,11 @@ target_include_directories(test_stage5 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests
 target_link_libraries(test_stage5 PRIVATE tui_core tui_io)
 add_test(NAME stage5 COMMAND test_stage5)
 
+add_executable(test_stage6 tests/test_stage6.cpp)
+target_include_directories(test_stage6 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+target_link_libraries(test_stage6 PRIVATE tui_io tui_console)
+add_test(NAME stage6 COMMAND test_stage6)
+
 # ---- demo ----
 add_executable(loop_demo src/app/loop_demo.cpp)
 target_link_libraries(loop_demo PRIVATE tui_core)
@@ -96,3 +103,8 @@ target_link_libraries(aggregate_demo PRIVATE tui_io tui_pool tui_console)
 
 add_executable(backend_compare src/app/backend_compare.cpp)
 target_link_libraries(backend_compare PRIVATE tui_core tui_io)
+
+# 阶段 6 capstone：串口网络助手（真实控制台 TUI + --selftest headless）
+add_executable(serial_net_assistant src/app/serial_net_assistant_main.cpp)
+target_link_libraries(serial_net_assistant PRIVATE tui_io tui_console)
+

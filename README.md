@@ -28,12 +28,12 @@
 | 阶段 | 名称 |
 |---|---|
 | 0 | 仓库与规范 ✅ |
-| 1 | Loop 骨架（EventLoop / 任务队列 / 定时器堆 / 唤醒） |
-| 2 | 输入与渲染（输入线程 / 差分渲染 / 按键查看器） |
-| 3 | I/O 后端（Overlapped / IOCP / close 状态机） |
-| 4 | 更多 source + worker 线程池（管道 / 目录 / socket） |
-| 5 | 双后端对照（`WaitForMultipleObjectsEx` / 64 句柄上限 / APC） |
-| 6 | Capstone（串口网络助手 / 聚合控制台） |
+| 1 | Loop 骨架（EventLoop / 任务队列 / 定时器堆 / 唤醒）✅ |
+| 2 | 输入与渲染（输入线程 / 差分渲染 / 按键查看器）✅ |
+| 3 | I/O 后端（Overlapped / IOCP / close 状态机）✅ |
+| 4 | 更多 source + worker 线程池（管道 / 目录 / socket）✅ |
+| 5 | 双后端对照（`WaitForMultipleObjectsEx` / 64 句柄上限 / APC）✅ |
+| 6 | Capstone（串口网络助手 / 聚合控制台）✅ |
 
 ## 构建
 
@@ -56,6 +56,10 @@ build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自�
 build\iocp_demo.exe              :: 阶段 3：目录监视 + IOCP + 差分渲染演示（约 1 秒）
 build\aggregate_demo.exe         :: 阶段 4：六子系统聚合控制台（约 1.2 秒）
 build\backend_compare.exe        :: 阶段 5：IOCP vs WFMO 双后端对照实验
+build\test_stage6.exe            :: 阶段 6：12 个单元测试（真实 COM1 + TCP 双源集成）
+build\serial_net_assistant.exe   :: 阶段 6：串口网络助手（真实控制台，ESC 退出）
+build\serial_net_assistant.exe --selftest        :: 阶段 6：无控制台自检
+build\serial_net_assistant.exe --port COM1 --run-ms 2000  :: 限时运行后优雅关闭
 ```
 
 **阶段进度：**
@@ -77,6 +81,18 @@ build\backend_compare.exe        :: 阶段 5：IOCP vs WFMO 双后端对照实�
   显式暴露 `MAXIMUM_WAIT_OBJECTS=64` 上限与 APC）。同一套 `EventLoop` 接口
   可切换 waker / wfmo / iocp 三种后端，同一工作负载结果一致。
   `backend_compare` 把「为什么 Windows 需要 IOCP」做成可运行实验。
+- 阶段 6（Capstone）：串口网络助手。`SerialSource` 用 overlapped `CreateFile` +
+  `DCB` + `SetCommTimeouts` + `SetCommMask(EV_RXCHAR)` + `WaitCommEvent`/`ReadFile`
+  两段式，作为第 6 种事件源接入同一个 IOCP 循环；`SerialNetAssistant` 提供日志区
+  （`RingBuffer` 背压）、输入行、状态栏与发送目标切换。串口与 TCP 共享一个 loop
+  线程、一起 `CancelIoEx` → 排空 → `Reap` 干净退出。
+  **`EventLoop` / `IWaitBackend` / `Watcher` / `EventSource` 自阶段 3 定型后零改动**
+  —— 六种形态不同的设备跑在同一套抽象上，是这套设计站得住的最终证明。
+
+  阶段 6 记下的关键 API 顺序约束：`EventLoop::Run()` 返回时会 `Shutdown()` 后端
+  （关闭 IOCP 句柄），因此 **`CloseAll()` 必须在 loop 仍在运行时调用**；应用的
+  关闭流程因此做成「loop 内定时器两段式」。另外串口 `WaitCommEvent` 的可靠唤醒
+  手段是 `SetCommMask(h, 0)`，不是 `CancelIoEx`。
 
 ## 许可
 
