@@ -1,0 +1,33 @@
+# Build
+build/
+out/
+cmake-build-*/
+*.dir/
+
+# MSVC / IDE
+.vs/
+*.user
+*.suo
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+
+# Binaries
+*.exe
+*.dll
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.idb
+
+# Logs / temp
+*.log
+*.tmp
+*.tlog
+
+# Local environment (never commit)
+.env
+*token*
+hosts.local.*
