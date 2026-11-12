@@ -44,9 +44,11 @@ std::string Str(const T& v) {
     if constexpr (std::is_enum_v<T>) {
         os << static_cast<std::underlying_type_t<T>>(v);
     } else if constexpr (std::is_same_v<T, wchar_t>) {
-        // char 流不接受 wchar_t（operator<< 被删除）；转成码点数字，
-        // 便于看到断言里字符的值，也避免编译失败。
+        // char 流不接受 wchar_t（operator<< 被删除）；转成码点数字。
         os << "wchar(" << static_cast<int>(v) << ")";
+    } else if constexpr (std::is_same_v<T, std::wstring>) {
+        // 窄流不接受 wchar_t 字符串；逐字符转 ASCII（测试里都是 ASCII 名）。
+        for (wchar_t c : v) os << (c >= 32 && c < 127 ? static_cast<char>(c) : '?');
     } else if constexpr (std::is_same_v<T, char> || std::is_same_v<T, signed char> ||
                          std::is_same_v<T, unsigned char>) {
         os << static_cast<int>(v);

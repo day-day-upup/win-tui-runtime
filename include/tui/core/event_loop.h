@@ -2,12 +2,14 @@
 
 #include <atomic>
 #include <cstddef>
+#include <memory>
 
 #include "tui/core/clock.h"
 #include "tui/core/task_queue.h"
 #include "tui/core/timer_heap.h"
 #include "tui/core/types.h"
-#include "tui/core/waker.h"
+#include "tui/core/wait_backend.h"
+#include "tui/core/waker_backend.h"
 
 // 阶段 1：EventLoop —— 事件循环骨架（headless）
 //
@@ -30,7 +32,10 @@ namespace tui::core {
 
 class EventLoop {
 public:
+    // 默认用 WakerBackend（阶段 1/2 行为）；传入其它后端即可切换等待模型
+    // （约束 C1：同一套 EventLoop 接口，阶段 3 注入 IocpBackend，阶段 5 注入 WFMO 后端）。
     explicit EventLoop(IClock& clock);
+    EventLoop(IClock& clock, std::unique_ptr<IWaitBackend> backend);
     ~EventLoop();
 
     EventLoop(const EventLoop&) = delete;
@@ -38,6 +43,9 @@ public:
 
     void Run();
     void Stop();
+
+    // 仅诊断 / 后端接入用。IocpBackend 需要它来投递「自定义完成包」。
+    IWaitBackend& WaitBackend() { return *backend_; }
 
     // --- 任务调度（任意线程）-------------------------------------
     void PostTask(Task task);
@@ -64,7 +72,7 @@ private:
     IClock& clock_;
     TaskQueue tasks_;
     TimerHeap timers_;   // 仅 loop 线程
-    Waker waker_;
+    std::unique_ptr<IWaitBackend> backend_;
 
     std::atomic<LoopState> state_{LoopState::kIdle};
     std::atomic<bool> stop_requested_{false};

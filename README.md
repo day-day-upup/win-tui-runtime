@@ -48,8 +48,10 @@ ctest --test-dir build --output-on-failure
 build\test_event_loop.exe        :: 阶段 1：15 个单元测试
 build\test_console.exe           :: 阶段 2：14 个单元测试
 build\loop_demo.exe             :: 阶段 1：headless 事件循环演示（约 3 秒）
+build\test_iocp.exe              :: 阶段 3：13 个单元测试（含真实目录端到端）
 build\key_viewer.exe             :: 阶段 2：按键事件查看器（真实控制台，ESC 退出）
 build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自检
+build\iocp_demo.exe              :: 阶段 3：目录监视 + IOCP + 差分渲染演示（约 1 秒）
 ```
 
 **阶段进度：**
@@ -58,6 +60,10 @@ build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自�
   `WriteConsoleOutputW` + 双缓冲 dirty-cell 差分、按 tick 合并刷新、resize/鼠标）。
   `key_viewer.exe` 需要真实 Win32 控制台交互；`--selftest` 用内存后端驱动
   同一套应用逻辑，可在无控制台环境验证出口条件。
+- 阶段 3：I/O 后端（`IWaitBackend` 可切换后端、`IocpBackend` 走
+  `GetQueuedCompletionStatusEx`、`IoContext` 带 generation、Watcher close 状态机、
+  `DirWatcher` 基于 `ReadDirectoryChangesW`）。`EventLoop` 默认仍是阶段 1 的
+  `WakerBackend`，注入 `IocpBackend` 即切换；阶段 1/2 测试零回归。
 
 ## 许可
 
