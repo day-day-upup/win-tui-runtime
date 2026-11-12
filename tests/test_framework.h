@@ -43,6 +43,13 @@ std::string Str(const T& v) {
     std::ostringstream os;
     if constexpr (std::is_enum_v<T>) {
         os << static_cast<std::underlying_type_t<T>>(v);
+    } else if constexpr (std::is_same_v<T, wchar_t>) {
+        // char 流不接受 wchar_t（operator<< 被删除）；转成码点数字，
+        // 便于看到断言里字符的值，也避免编译失败。
+        os << "wchar(" << static_cast<int>(v) << ")";
+    } else if constexpr (std::is_same_v<T, char> || std::is_same_v<T, signed char> ||
+                         std::is_same_v<T, unsigned char>) {
+        os << static_cast<int>(v);
     } else {
         os << v;
     }

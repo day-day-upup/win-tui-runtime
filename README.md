@@ -35,7 +35,7 @@
 | 5 | 双后端对照（`WaitForMultipleObjectsEx` / 64 句柄上限 / APC） |
 | 6 | Capstone（串口网络助手 / 聚合控制台） |
 
-## 构建（阶段 1）
+## 构建
 
 C++20 / MSVC / CMake / Ninja；仅链接 Windows 系统库，无第三方依赖。
 
@@ -44,14 +44,20 @@ C++20 / MSVC / CMake / Ninja；仅链接 Windows 系统库，无第三方依赖�
 ```bat
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
-build\test_event_loop.exe        :: 15 个单元测试
-build\loop_demo.exe             :: headless 事件循环演示（约 3 秒）
+ctest --test-dir build --output-on-failure
+build\test_event_loop.exe        :: 阶段 1：15 个单元测试
+build\test_console.exe           :: 阶段 2：14 个单元测试
+build\loop_demo.exe             :: 阶段 1：headless 事件循环演示（约 3 秒）
+build\key_viewer.exe             :: 阶段 2：按键事件查看器（真实控制台，ESC 退出）
+build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自检
 ```
 
-也可用 `ctest --test-dir build --output-on-failure`。
-
-阶段 1 是**纯 headless** 的：没有控制台 UI，只实现 Loop 骨架
-（`EventLoop` / `TaskQueue` / `TimerHeap` / `Waker` / 可注入时钟）。
+**阶段进度：**
+- 阶段 1：**纯 headless** Loop 骨架（`EventLoop` / `TaskQueue` / `TimerHeap` / `Waker` / 可注入时钟）。
+- 阶段 2：控制台输入与渲染（`ReadConsoleInput` 输入线程、`INPUT_RECORD` 解码、
+  `WriteConsoleOutputW` + 双缓冲 dirty-cell 差分、按 tick 合并刷新、resize/鼠标）。
+  `key_viewer.exe` 需要真实 Win32 控制台交互；`--selftest` 用内存后端驱动
+  同一套应用逻辑，可在无控制台环境验证出口条件。
 
 ## 许可
 
