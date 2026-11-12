@@ -35,9 +35,23 @@
 | 5 | 双后端对照（`WaitForMultipleObjectsEx` / 64 句柄上限 / APC） |
 | 6 | Capstone（串口网络助手 / 聚合控制台） |
 
-## 构建
+## 构建（阶段 1）
 
-C++20 / MSVC / CMake；仅链接 Windows 系统库。具体构建方式在阶段 1 落地后补充。
+C++20 / MSVC / CMake / Ninja；仅链接 Windows 系统库，无第三方依赖。
+
+在 **x64 Native Tools Command Prompt**（或先运行 `vcvars64.bat`）里：
+
+```bat
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+build\test_event_loop.exe        :: 15 个单元测试
+build\loop_demo.exe             :: headless 事件循环演示（约 3 秒）
+```
+
+也可用 `ctest --test-dir build --output-on-failure`。
+
+阶段 1 是**纯 headless** 的：没有控制台 UI，只实现 Loop 骨架
+（`EventLoop` / `TaskQueue` / `TimerHeap` / `Waker` / 可注入时钟）。
 
 ## 许可
 
