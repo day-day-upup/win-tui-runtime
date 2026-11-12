@@ -65,9 +65,14 @@ public:
     // ctx 是发起操作时用的 IoContext；返回本 watcher 是否仍处于活跃/关闭中。
     void OnCompletion(IoContext& ctx, uint32_t bytes, uint32_t error);
 
-    // 发起一次新的 overlapped 读（具体 source 在 Arm() 里调 ReadDirectoryChangesW 等）。
+    // 发起一次新的 overlapped 操作（具体 source 在 Arm() 里发起）。
     // 返回是否成功提交。失败时 inflight 不增。
     bool BeginOperation(IoContext& ctx);
+
+    // 阶段 4：完成回调里「重新挂起同一个 ctx」的标准做法。
+    // 正确维护 generation / ResetForReuse / inflight，避免 source 自己
+    // 直接调 Arm 而漏掉计数（全双工读完成后用）。返回是否成功。
+    bool ReArm(IoContext& ctx);
 
 protected:
     // 具体 source 重写：提交一次 overlapped 操作。返回是否成功。

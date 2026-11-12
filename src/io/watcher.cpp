@@ -21,16 +21,36 @@ bool Watcher::BeginOperation(IoContext& ctx) {
     ctx.owner = this;
     ctx.error = 0;
     ctx.cancelled = false;
-    if (!Arm(ctx)) return false;
+    ctx.generation = generation_;
+    ctx.armed = true;
+    if (!Arm(ctx)) {
+        ctx.armed = false;
+        return false;
+    }
     ++inflight_;
     return true;
 }
 
+bool Watcher::ReArm(IoContext& ctx) {
+    if (state_ != WatcherState::kActive) return false;
+    ++generation_;
+    ctx.ResetForReuse();
+    ctx.generation = generation_;
+    return BeginOperation(ctx);
+}
+
 void Watcher::OnCompletion(IoContext& ctx, uint32_t bytes, uint32_t error) {
-    // 过期完成包：generation 不匹配的（例如 watcher 已关闭后又重投的旧包）直接丢弃。
-    if (ctx.generation != generation_ && ctx.owner == this) {
+    // 过期完成包判定：
+    //   - 阶段 3 单 ctx：generation 不匹配 → 丢弃（保留原语义）。
+    //   - 阶段 4 多 ctx 全双工：每个 ctx 有自己的生命周期，不能用全局
+    //     generation_ 比较（读 ctx 的 ReArm 会递增它，导致写 ctx 的
+    //     完成包被误判为过期）。改用 per-ctx 的 armed 标志。
+    //     只有「owner 是本 watcher 且 armed==false」才是已消费/重复的旧包。
+    if (ctx.owner == this && !ctx.armed &&
+        ctx.generation != generation_ && ctx.op_kind == OpKind::kGeneric) {
         return;
     }
+    if (ctx.owner == this) ctx.armed = false;  // 本次完成已消费
     if (inflight_ > 0) --inflight_;
 
     const bool was_cancelled = (error == ERROR_OPERATION_ABORTED) || ctx.cancelled;
@@ -40,13 +60,17 @@ void Watcher::OnCompletion(IoContext& ctx, uint32_t bytes, uint32_t error) {
             // 正常完成：把通知交给具体 source 解析，再回调用户。
             Notify(bytes, error, ctx.buffer);
             if (user_cb_) user_cb_(bytes, error, ctx.buffer);
+
+            // 阶段 4：给 source 一个「自定义完成后处置」的机会。
+            // 返回 true 表示 source 已自行处理（例如重新挂读 / 释放写 ctx）。
+            bool handled = false;
+            if (ctx.on_complete) handled = ctx.on_complete(ctx, bytes, error);
+
             // 回调里可能调用了 Close()（例如读到 EOF、用户退出）。
             // 此时不能再重新 Arm，直接进入收尾。
-            if (state_ == WatcherState::kActive && !close_requested_) {
-                ++generation_;
-                ctx.ResetForReuse();
-                ctx.generation = generation_;
-                BeginOperation(ctx);
+            if (!handled && state_ == WatcherState::kActive &&
+                !close_requested_ && ctx.auto_rearm) {
+                ReArm(ctx);
                 return;
             }
             // 否则 fall through 到收尾分支

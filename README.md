@@ -49,9 +49,11 @@ build\test_event_loop.exe        :: 阶段 1：15 个单元测试
 build\test_console.exe           :: 阶段 2：14 个单元测试
 build\loop_demo.exe             :: 阶段 1：headless 事件循环演示（约 3 秒）
 build\test_iocp.exe              :: 阶段 3：13 个单元测试（含真实目录端到端）
+build\test_stage4.exe            :: 阶段 4：7 个单元测试（含真实管道 + TCP 端到端）
 build\key_viewer.exe             :: 阶段 2：按键事件查看器（真实控制台，ESC 退出）
 build\key_viewer.exe --selftest   :: 阶段 2：无控制台的差分渲染自检
 build\iocp_demo.exe              :: 阶段 3：目录监视 + IOCP + 差分渲染演示（约 1 秒）
+build\aggregate_demo.exe         :: 阶段 4：六子系统聚合控制台（约 1.2 秒）
 ```
 
 **阶段进度：**
@@ -64,6 +66,11 @@ build\iocp_demo.exe              :: 阶段 3：目录监视 + IOCP + 差分渲�
   `GetQueuedCompletionStatusEx`、`IoContext` 带 generation、Watcher close 状态机、
   `DirWatcher` 基于 `ReadDirectoryChangesW`）。`EventLoop` 默认仍是阶段 1 的
   `WakerBackend`，注入 `IocpBackend` 即切换；阶段 1/2 测试零回归。
+- 阶段 4：更多 source + worker 线程池（`PipeSource` 命名管道捕获子进程 stdout、
+  `TcpSource` Winsock overlapped 全双工、`ThreadPool` 用 Win32 CV/SRWLOCK 做
+  无状态计算并回投续延、`RingBuffer` 背压）。`IoContext` 支持多 ctx 全双工
+  （读/写各一个 OVERLAPPED）。`aggregate_demo` 把六类子系统接进同一个 IOCP
+  事件循环；阶段 1/2/3 测试零回归。
 
 ## 许可
 

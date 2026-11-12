@@ -34,15 +34,24 @@ add_library(tui_console STATIC
 target_include_directories(tui_console PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tui_console PUBLIC tui_core)
 
-# ---- io 静态库：IOCP 后端 / Watcher close 状态机 / 事件源（阶段 3）----
+# ---- io 静态库：IOCP 后端 / Watcher close 状态机 / 事件源（阶段 3+4）----
 add_library(tui_io STATIC
     src/io/iocp_backend.cpp
     src/io/watcher.cpp
     src/io/event_source.cpp
     src/io/dir_watcher.cpp
+    src/io/pipe_source.cpp
+    src/io/tcp_source.cpp
 )
 target_include_directories(tui_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(tui_io PUBLIC tui_core)
+target_link_libraries(tui_io PUBLIC tui_core ws2_32)
+
+# ---- pool 静态库：worker 线程池（阶段 4）----
+add_library(tui_pool STATIC
+    src/pool/thread_pool.cpp
+)
+target_include_directories(tui_pool PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(tui_pool PUBLIC tui_core)
 
 # ---- 单元测试 ----
 enable_testing()
@@ -61,6 +70,11 @@ target_include_directories(test_iocp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 target_link_libraries(test_iocp PRIVATE tui_io)
 add_test(NAME iocp COMMAND test_iocp)
 
+add_executable(test_stage4 tests/test_stage4.cpp)
+target_include_directories(test_stage4 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+target_link_libraries(test_stage4 PRIVATE tui_io tui_pool tui_console)
+add_test(NAME stage4 COMMAND test_stage4)
+
 # ---- demo ----
 add_executable(loop_demo src/app/loop_demo.cpp)
 target_link_libraries(loop_demo PRIVATE tui_core)
@@ -70,3 +84,6 @@ target_link_libraries(key_viewer PRIVATE tui_console)
 
 add_executable(iocp_demo src/app/iocp_demo.cpp)
 target_link_libraries(iocp_demo PRIVATE tui_io tui_console)
+
+add_executable(aggregate_demo src/app/aggregate_demo.cpp)
+target_link_libraries(aggregate_demo PRIVATE tui_io tui_pool tui_console)

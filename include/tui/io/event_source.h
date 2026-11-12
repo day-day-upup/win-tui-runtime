@@ -29,7 +29,7 @@ public:
     EventSource& operator=(const EventSource&) = delete;
 
     virtual bool Start() = 0;
-    void CloseAll();
+    virtual void CloseAll();  // 阶段 4：派生类可追加清理（如子进程）
     void Reap();  // 仅 loop 线程调用
     size_t WatcherCount() const { return watchers_.size(); }
 

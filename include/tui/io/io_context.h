@@ -23,6 +23,15 @@ namespace tui::io {
 // completion 回调：bytes=传输字节数，error=GetLastError 风格错误码（0 表示成功）。
 using IoCallback = std::function<void(uint32_t bytes, uint32_t error)>;
 
+// 阶段 4：操作类型。全双工 source 需要区分「读完成」与「写完成」，
+// 二者处置不同（读要继续挂读，写通常一次性投递后不重挂）。
+enum class OpKind {
+    kGeneric,  // 阶段 3 的目录监视等：统一处置
+    kRead,
+    kWrite,
+    kAccept,
+};
+
 // 完成包类型的 CompletionKey 取值（PostQueuedCompletionStatus 用）。
 enum : ULONG_PTR {
     kKeyWatcher = 1,   // 普通 I/O 完成（lpOverlapped 指向 IoContext）
@@ -39,6 +48,16 @@ struct IoContext {
     uint32_t error = 0;        // completion 的错误码；投递前由 Watcher/测试设置
     bool cancelled = false;    // 标记这是 CancelIoEx 导致的取消完成包
 
+    // 阶段 4 新增：操作类型、是否自动重新挂起、以及「完成后自定义处置」钩子。
+    // on_complete 在 OnCompletion 里、Notify 之后调用；返回 true 表示
+    // 「本 ctx 已由 source 自行重新发起」，Watcher 不再自动重挂。
+    // 默认 false，保持阶段 3 行为不变（13 个测试零改动）。
+    OpKind op_kind = OpKind::kGeneric;
+    bool auto_rearm = true;
+    bool armed = false;  // 由 Watcher::BeginOperation 置位、OnCompletion 清除；
+                         // 多 ctx 全双工下用于识别「已消费/过期」完成包。
+    std::function<bool(IoContext& ctx, uint32_t bytes, uint32_t error)> on_complete;
+
     IoContext() = default;
     IoContext(const IoContext&) = delete;
     IoContext& operator=(const IoContext&) = delete;
@@ -53,6 +72,9 @@ struct IoContext {
         owner = nullptr;
         error = 0;
         cancelled = false;
+        armed = false;
+        // 注意：op_kind / auto_rearm / on_complete 不清零，
+        // 它们描述「这个 ctx 的用途」，重新发起时应保持不变。
     }
 };
 
